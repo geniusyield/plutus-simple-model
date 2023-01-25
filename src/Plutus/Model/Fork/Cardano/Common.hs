@@ -55,6 +55,7 @@ import Cardano.Ledger.Shelley.API.Types qualified as C (
   Ptr(..),
   StakeReference(..),
   Addr(..),
+  Delegation (Delegation)
   )
 import Cardano.Crypto.Hash.Class qualified as C
 import Cardano.Ledger.Era qualified as C
@@ -65,7 +66,6 @@ import Cardano.Ledger.Shelley.API.Types qualified as Shelley (Hash)
 import Cardano.Ledger.TxIn qualified as C
 import Cardano.Ledger.ShelleyMA.Timelocks qualified as C
 import Cardano.Ledger.Keys qualified as C
-import Cardano.Ledger.Keys.WitVKey
 import Cardano.Ledger.Shelley.UTxO qualified as C
 import qualified Cardano.Crypto.Hash.Class as Crypto
 import Cardano.Ledger.Mary.Value qualified as C
@@ -85,6 +85,7 @@ import Plutus.Model.Fork.Ledger.Tx qualified as Plutus
 import Plutus.Model.Ada qualified as Ada
 import PlutusTx.Builtins qualified as PlutusTx
 import Plutus.Model.Fork.Ledger.Scripts qualified as C
+import Cardano.Ledger.Shelley.API.Types (WitVKey)
 
 type ToCardanoError = String
 

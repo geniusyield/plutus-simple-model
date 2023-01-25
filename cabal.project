@@ -1,15 +1,306 @@
-index-state: 2022-01-19T00:00:00Z
+--------------------------------------------------------------------------------
+-- Cabal project file
+-- -----------------------------------------------------------------------------
+--
+-- Example build command:
+--
+--   cabal build all --enable-tests --enable-benchmarks -O0
+--
+-- -----------------------------------------------------------------------------
+-- Updating this file
+--
+-- Note that the canonical source of dependencies is stack.yaml and
+-- cabal.project should be kept in sync with that. The Nix packages
+-- are generated from stack.yaml not cabal.project.
+--
+-- -----------------------------------------------------------------------------
+-- How to use with the nix-shell
+--
+-- The advantage of building under nix-shell is that the correct
+-- versions of all build and test dependencies are set up for you in the
+-- nix-shell environment.
+--
+-- All dependencies, including Haskell package dependencies, have been
+-- built on Hydra and are transparently downloaded from the IOHK
+-- cache.
+--
+-- The Haskell package set in shell.nix is automatically generated
+-- from stack.yaml.
+--
+-- To build, start "nix-shell", then run Cabal inside:
+--     nix develop
+--     cabal build all -O0
+--
+-- To build with profiling enabled, use:
+--    nix develop .#profiled
+--    cabal configure --enable-tests --enable-benchmarks --enable-profiling
+--    cabal build all
+--
+--------------------------------------------------------------------------------
 
-packages: ./.
+-- Custom repository for cardano haskell packages, see
+-- https://github.com/input-output-hk/cardano-haskell-packages
+-- for more information.
+repository cardano-haskell-packages
+  url: https://input-output-hk.github.io/cardano-haskell-packages
+  secure: True
+  root-keys:
+    3e0cce471cf09815f930210f7827266fd09045445d65923e6d0238a6cd15126f
+    443abb7fb497a134c343faf52f0b659bd7999bc06b7f63fa76dc99d631f9bea1
+    a86a1f6ce86c449c46666bda44268677abf29b5b2d2eb5ec7af903ec2f117a82
+    bcec67e8e99cabfa7764d75ad9b158d72bfacf70ca1d0ec8bc6b4406d1bf8413
+    c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
+    d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
 
--- You never, ever, want this.
-write-ghc-environment-files: never
+index-state: 2022-09-27T00:00:00Z
+index-state: cardano-haskell-packages 2022-10-25T20:00:00Z
 
--- Always build tests and benchmarks.
-tests: true
-benchmarks: true
+packages: .
 
-package plutus-simple-model
-  haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
+-- Using RDRAND instead of /dev/urandom as an entropy source for key
+-- generation is dubious. Set the flag so we use /dev/urandom by default.
+package cryptonite
+  flags: -support_rdrand
 
-allow-newer: size-based:template-haskell
+-- Using a fork until our patches can be merged upstream
+
+-- TODO: ADP-1713
+source-repository-package
+  type: git
+  location: https://github.com/biocad/servant-openapi3
+  tag: 4165b837d3a71debd1059c3735460075840000b5
+  --sha256: 1dngrr353kjhmwhn0b289jzqz5rf32llwcv79zcyq15ldpqpbib9
+
+-- TODO: ADP-1713
+source-repository-package
+  type: git
+  location: https://github.com/paolino/openapi3
+  tag: c30d0de6875d75edd64d1aac2272886528bc492d
+  --sha256: 0b0fzj5vrnfrc8qikabxhsnp4p8lrjpssblbh2rb7aji5hzzfli9
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-addresses
+    tag: 5094fb9d304ed69adedc99513634a00cbf850fca
+    --sha256: 1zhi8kvr2yhn50dm3dwwb1jlm5yl0y6c6hg39cs6abbxqmsj5jlv
+    subdir: command-line
+            core
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/bech32
+    tag: ab61914443e5f53624d3b2995767761b3f68e576
+    --sha256: 0isqh5s6rdhmqa3jhvc32zb3kvzy149hmzddx1ld9f9jhls4f3wg
+    subdir: bech32
+            bech32-th
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-sl-x509
+    tag: a91add165152fa36f08e95fafe7da24f1dba4690
+    --sha256: 1ia8vlqghis92cla8qmqa6kh8f3jn29b01fshyk5hmgy5373s684
+
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/ekg-forward
+  tag: 297cd9db5074339a2fb2e5ae7d0780debb670c63
+  --sha256: 1zcwry3y5rmd9lgxy89wsb3k4kpffqji35dc7ghzbz603y1gy24g
+
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-crypto
+    tag: f73079303f663e028288f9f4a9e08bcca39a923e
+    --sha256: 1n87i15x54s0cjkh3nsxs4r1x016cdw1fypwmr68936n3xxsjn6q
+
+-- Different version than from CHaP to include the ReaderT fix.
+-- TODO [ADP-2447] This source-repository-package should be removable with next node bump.
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/io-sim
+  tag: 57e888b1894829056cb00b7b5785fdf6a74c3271
+  --sha256: 1kv8lwmrw1c0g03jy3i3fgk3c8d47ihjcslg295djqj442y95y2f
+  subdir:
+    io-classes
+    io-sim
+    strict-stm
+
+-- It seems that if we remove this source-repository-package to rely on CHaP,
+-- for some reason, we're unable to retrieve the cardano-node executables in
+-- our nix/haskell.nix file.
+
+-- Without this source-repository-package:
+-- config.hsPkgs.cardano-node.components.exes
+-- => []
+--
+-- With:
+-- config.hsPkgs.cardano-node.components.exes
+-- => [ "cardano-node" ]
+--
+-- TODO [ADP-2447] See if the situation has improved and try to remove this source-repository-package.
+source-repository-package
+    type: git
+    location: https://github.com/input-output-hk/cardano-node
+    tag: ebc7be471b30e5931b35f9bbc236d21c375b91bb
+    --sha256: 1j01m2cp2vdcl26zx9xmipr551v3b2rz9kfn9ik8byfwj1z7652r
+    subdir:
+      cardano-api
+      cardano-git-rev
+      cardano-cli
+      cardano-node
+      cardano-node-chairman
+      trace-dispatcher
+      trace-resources
+      trace-forward
+
+-- -------------------------------------------------------------------------
+-- Constraints tweaking
+
+-- cardano-addresses unit tests bring in some version constraint conflicts.
+--
+-- 1. hjsonschema and hjsonpointer deps have overly strict bounds.
+-- 2. it has strict aeson < 1.5 dep - this will be fixed in the next release.
+allow-newer:
+    hjsonschema:*
+  , hjsonpointer:*
+  , cardano-sl-x509:ip
+  , *:aeson
+  , size-based:template-haskell
+
+-- Copied from (copied from cardano-node/cabal.project)
+allow-newer:
+  *:aeson,
+  monoidal-containers:aeson,
+  size-based:template-haskell
+
+allow-newer:
+  async-timer:unliftio-core
+
+constraints:
+    bimap >= 0.4.0
+  , openapi3 >= 3.2.0
+  , libsystemd-journal >= 1.4.4
+  , systemd >= 2.3.0
+  -- dependency of systemd-2.3.0
+  , network >= 3.1.1.1
+  -- choose versions that work with base >= 4.12
+  , hjsonpointer >= 1.5.0
+  , hjsonschema >= 1.10.0
+  , Cabal >= 3.4.0.0
+  , async-timer >= 0.2.0.0
+  , unliftio-core >= 0.2.0.1
+  , cardano-api == 1.35.4
+  , cardano-node == 1.35.4
+  , generic-arbitrary == 0.2.2
+  , iohk-monitoring >= 0.1.11
+
+  -- Could probably be bumped with minor work in the wallet
+  , resource-pool == 0.2.3.2
+
+  -- TH Name shadowing warnings need to be addressed when bumping to 2.13.3.5
+  , persistent == 2.13.3.3
+
+  -- Copied from cardano-node's cabal.project:
+  , bimap >= 0.4.0
+  , libsystemd-journal >= 1.4.4
+  , systemd >= 2.3.0
+    -- systemd-2.3.0 requires at least network 3.1.1.0 but it doesn't declare
+    -- that dependency
+  , network >= 3.1.1.0
+  , HSOpenSSL >= 0.11.7.2
+  , algebraic-graphs < 0.7
+  , protolude < 0.3.1
+  , cardano-prelude == 0.1.0.0
+  , base-deriving-via == 0.1.0.0
+  , cardano-binary  == 1.5.0
+  , cardano-binary-test == 1.3.0
+  , cardano-crypto-class  == 2.0.0.0.1
+  , cardano-crypto-praos  == 2.0.0.0.1
+  , cardano-crypto-tests  == 2.0.0.0.1
+  , cardano-slotting  == 0.1.0.0
+  , measures == 0.1.0.0
+  , orphans-deriving-via == 0.1.0.0
+  , strict-containers == 0.1.0.0
+  , plutus-core == 1.0.0.1
+  , plutus-ledger-api == 1.0.0.1
+  , plutus-tx == 1.0.0.0
+  , plutus-tx-plugin == 1.0.0.0
+  , prettyprinter-configurable == 0.1.0.0
+  , plutus-ghc-stub == 8.6.5
+  , word-array == 0.1.0.0
+  , word-array == 0.1.0.0
+
+-- ----------------------------------------------------------------
+-- Flags for dependencies
+
+package cardano-config
+  flags: +systemd
+package cardano-node
+  flags: +systemd
+
+-- -------------------------------------------------------------------------
+-- Enable specific tests in this repo
+
+test-show-details: direct
+
+package dbvar
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-balance-tx
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-coin-selection
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-api-http
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-cli
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-launcher
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-primitive
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-text-class
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-numeric
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-integration
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package cardano-wallet-test-utils
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package strict-non-empty-containers
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+package wai-middleware-logging
+  tests: True
+  ghc-options: -fwrite-ide-info
+
+-- Now disable all other tests with a global flag.
+-- This is what they do in cardano-node/cabal.project.
+
+tests: False
+
+-- -------------------------------------------------------------------------
