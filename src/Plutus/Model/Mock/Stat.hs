@@ -1,7 +1,6 @@
 -- | Tx execution statistics (execution units budget)
 module Plutus.Model.Mock.Stat(
   TxStat(..),
-  txStatId,
   Stat(..),
   mainnetTxLimits,
   testnetTxLimits,
@@ -14,27 +13,23 @@ module Plutus.Model.Mock.Stat(
   toStatPercent,
 ) where
 
-import Prelude
-import GHC.Natural
-import Cardano.Ledger.Alonzo.Scripts (ExUnits(..))
-import Plutus.V2.Ledger.Api
-import Plutus.Model.Fork.Ledger.Tx qualified as P
-import Plutus.Model.Fork.Ledger.Slot
-import Plutus.Model.Fork.TxExtra
-import Plutus.Model.Mock.Percent
+import           Cardano.Ledger.Alonzo.Scripts (ExUnits (..))
+import           GHC.Natural
+import           Plutus.Model.Fork.Ledger.Slot
+import           Plutus.Model.Fork.TxExtra
+import           Plutus.Model.Mock.Percent
+import           Plutus.V2.Ledger.Api
+import           Prelude
 
 -- | TX with stats of TX execution onchain.
 data TxStat = TxStat
-  { txStatTx        :: !Tx
-  , txStatTime      :: !Slot
-  , txStat          :: !Stat
-  , txStatPercent   :: !StatPercent
+  { txStatTx      :: !Tx
+  , txStatTime    :: !Slot
+  , txStat        :: !Stat
+  , txStatPercent :: !StatPercent
+  , txStatId      :: !TxId
   }
   deriving (Show)
-
--- | Gets Tx's hash
-txStatId :: TxStat -> TxId
-txStatId = P.txId . tx'plutus . txStatTx
 
 -- | Stats of TX execution onchain.
 data Stat = Stat

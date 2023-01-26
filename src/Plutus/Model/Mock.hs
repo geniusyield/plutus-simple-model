@@ -33,6 +33,8 @@ module Plutus.Model.Mock (
   isOkResult,
   FailReason (..),
   LimitOverflow (..),
+  TxId,
+  Stat (..),
   modifyMockNames,
   writeUserName,
   writeAddressName,
@@ -727,7 +729,7 @@ applyTx stat tid etx@(Tx extra P.Tx {..}) = do
     saveTx = do
       t <- gets mockCurrentSlot
       statPercent <- getStatPercent
-      modify' $ \s -> s {mockTxs = appendLog t (TxStat etx t stat statPercent) $ mockTxs s}
+      modify' $ \s -> s {mockTxs = appendLog t (TxStat etx t stat statPercent tid) $ mockTxs s}
 
     getStatPercent = do
       maxLimits <- gets (mockConfigLimitStats . mockConfig)
