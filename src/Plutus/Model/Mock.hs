@@ -26,7 +26,6 @@ module Plutus.Model.Mock (
   MockNames (..),
   User (..),
   TxStat (..),
-  txStatId,
   PoolId(..),
   ExUnits (..),
   Result (..),
@@ -490,14 +489,14 @@ noLogInfo act = do
   pure res
 
 -- | Send block of TXs to blockchain.
-sendBlock :: [Tx] -> Run (Either FailReason [Stat])
+sendBlock :: [Tx] -> Run (Either FailReason [(Stat, TxId)])
 sendBlock txs = do
   res <- sequence <$> mapM sendSingleTx txs
   when (isRight res) bumpSlot
   pure res
 
 -- | Sends block with single TX to blockchai
-sendTx :: Tx -> Run (Either FailReason Stat)
+sendTx :: Tx -> Run (Either FailReason (Stat, TxId))
 sendTx tx = do
   res <- sendSingleTx tx
   when (isRight res) bumpSlot
@@ -506,7 +505,7 @@ sendTx tx = do
 {- | Send single TX to blockchain. It logs failure if TX is invalid
  and produces performance stats if TX was ok.
 -}
-sendSingleTx :: Tx -> Run (Either FailReason Stat)
+sendSingleTx :: Tx -> Run (Either FailReason (Stat, TxId))
 sendSingleTx preTx = do
   case processMints preTx of
     Right tx -> do
@@ -535,7 +534,7 @@ checkSingleTx ::
     Class.IsCardanoTx era,
     Core.Value era ~ Mary.Value C.StandardCrypto
   )
-  => Core.PParams era -> Tx -> Run (Either FailReason Stat)
+  => Core.PParams era -> Tx -> Run (Either FailReason (Stat, TxId))
 checkSingleTx params (Tx extra tx) =
   withCheckStaking $
     withCheckRange $
@@ -548,7 +547,7 @@ checkSingleTx params (Tx extra tx) =
                   stat = Stat txSize cost
               withCheckTxLimits stat $ do
                 applyTx stat tid (Tx extra tx)
-                pure $ Right stat
+                pure $ Right (stat, tid)
   where
     pkhs = M.keys $ P.txSignatures tx
 
