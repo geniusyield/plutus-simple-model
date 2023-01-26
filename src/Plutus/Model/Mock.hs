@@ -56,6 +56,7 @@ module Plutus.Model.Mock (
   StatPercent(..),
   PercentExecutionUnits(..),
   toStatPercent,
+  getUserSignKey,
 
   -- * core blockchain functions
   getMainUser,
@@ -126,83 +127,86 @@ module Plutus.Model.Mock (
   userPubKeyHash,
 ) where
 
-import Prelude
-import Control.Applicative (Alternative(..))
-import GHC.Records
+import           Control.Applicative                  (Alternative (..))
+import           GHC.Records
+import           Prelude
 
-import Control.Monad.Identity
-import Data.ByteString qualified as BS
-import Data.Either
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
-import qualified Data.Map as Map
-import qualified Data.Array as Array
-import Data.Text (Text)
+import           Control.Monad.Identity
+import qualified Data.Array                           as Array
+import qualified Data.ByteString                      as BS
+import           Data.Either
+import qualified Data.Map                             as Map
+import           Data.Map.Strict                      (Map)
+import qualified Data.Map.Strict                      as M
+import           Data.Text                            (Text)
 
-import Data.List qualified as L
-import Data.Vector qualified as V
-import Data.Maybe
-import Data.Set (Set)
-import Data.Set qualified as S
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import Data.Sequence.Strict (StrictSeq)
+import qualified Data.List                            as L
+import           Data.Maybe
+import           Data.Sequence.Strict                 (StrictSeq)
+import           Data.Set                             (Set)
+import qualified Data.Set                             as S
+import           Data.Time.Clock.POSIX                (posixSecondsToUTCTime)
+import qualified Data.Vector                          as V
 
-import Cardano.Ledger.Alonzo.TxInfo (ExtendedUTxO)
-import Cardano.Ledger.Era (Crypto)
-import Cardano.Ledger.Alonzo.TxWitness qualified as C
-import Cardano.Ledger.Shelley.API.Types qualified as C
-import Cardano.Crypto.Seed qualified as C
-import Cardano.Crypto.DSIGN.Class qualified as C
-import Cardano.Crypto.Hash.Class qualified as C
-import Cardano.Ledger.Crypto qualified as C
-import Cardano.Slotting.EpochInfo.Impl (fixedEpochInfo)
-import Cardano.Slotting.Time (SystemStart (..), slotLengthFromMillisec)
-import Control.Monad.State.Strict
-import Plutus.V2.Ledger.Api hiding (Map)
-import Plutus.V1.Ledger.Interval qualified as Interval
-import Plutus.Model.Fork.Ledger.Tx qualified as P
-import Plutus.Model.Fork.Ledger.Tx qualified as Plutus
-import Plutus.V1.Ledger.Value (AssetClass, assetClass)
-import Plutus.V1.Ledger.Address (pubKeyHashAddress, toPubKeyHash)
-import Cardano.Ledger.Core qualified as Core
-import GHC.Natural
+import qualified Cardano.Crypto.DSIGN.Class           as C
+import qualified Cardano.Crypto.Hash.Class            as C
+import qualified Cardano.Crypto.Seed                  as C
+import           Cardano.Ledger.Alonzo.TxInfo         (ExtendedUTxO)
+import qualified Cardano.Ledger.Alonzo.TxWitness      as C
+import qualified Cardano.Ledger.Core                  as Core
+import qualified Cardano.Ledger.Crypto                as C
+import           Cardano.Ledger.Era                   (Crypto)
+import qualified Cardano.Ledger.Shelley.API.Types     as C
+import           Cardano.Slotting.EpochInfo.Impl      (fixedEpochInfo)
+import           Cardano.Slotting.Time                (SystemStart (..),
+                                                       slotLengthFromMillisec)
+import           Control.Monad.State.Strict
+import           GHC.Natural
+import qualified Plutus.Model.Fork.Ledger.Tx          as P
+import qualified Plutus.Model.Fork.Ledger.Tx          as Plutus
+import           Plutus.V1.Ledger.Address             (pubKeyHashAddress,
+                                                       toPubKeyHash)
+import qualified Plutus.V1.Ledger.Interval            as Interval
+import           Plutus.V1.Ledger.Value               (AssetClass, assetClass)
+import           Plutus.V2.Ledger.Api                 hiding (Map)
 
-import Cardano.Ledger.Hashes qualified as C
-import Cardano.Ledger.Slot (EpochSize (..))
-import Cardano.Binary qualified as CBOR
-import Cardano.Crypto.Hash qualified as Crypto
-import Cardano.Ledger.Hashes as Ledger (EraIndependentTxBody)
-import Cardano.Ledger.SafeHash qualified as Ledger (unsafeMakeSafeHash)
-import Plutus.Model.Fork.Ledger.Slot
-import Plutus.Model.Fork.Ledger.TimeSlot (SlotConfig (..))
-import Plutus.Model.Fork.TxExtra
-import Plutus.Model.Stake
-import Plutus.Model.Mock.ProtocolParameters
+import qualified Cardano.Binary                       as CBOR
+import qualified Cardano.Crypto.Hash                  as Crypto
+import           Cardano.Ledger.Hashes                as Ledger (EraIndependentTxBody)
+import qualified Cardano.Ledger.Hashes                as C
+import qualified Cardano.Ledger.SafeHash              as Ledger (unsafeMakeSafeHash)
+import           Cardano.Ledger.Slot                  (EpochSize (..))
+import           Plutus.Model.Fork.Ledger.Slot
+import           Plutus.Model.Fork.Ledger.TimeSlot    (SlotConfig (..))
+import           Plutus.Model.Fork.TxExtra
+import           Plutus.Model.Mock.ProtocolParameters
+import           Plutus.Model.Stake
 
-import Cardano.Ledger.Mary.Value qualified as Mary
-import Cardano.Ledger.Shelley.API.Wallet qualified as C
-import Cardano.Ledger.SafeHash qualified as C
-import Cardano.Ledger.TxIn qualified as Ledger
-import Cardano.Ledger.Alonzo.Tools (evaluateTransactionExecutionUnits)
-import Cardano.Ledger.Shelley.API.Wallet (evaluateTransactionBalance)
-import qualified Cardano.Ledger.Alonzo.Language as Alonzo
-import qualified Cardano.Ledger.Alonzo.Scripts as Alonzo
-import qualified Cardano.Ledger.Alonzo.PParams as Alonzo
-import Plutus.Model.Fork.Cardano.Alonzo ()
-import Plutus.Model.Fork.Cardano.Babbage  ()
-import Plutus.Model.Fork.Cardano.Common (fromTxId, fromCardanoValue)
-import Cardano.Ledger.Shelley.UTxO qualified as Ledger
-import Cardano.Ledger.Alonzo.Scripts (ExUnits(..))
-import Plutus.Model.Ada (Ada(..))
-import Plutus.Model.Mock.MockConfig
-import Plutus.Model.Mock.FailReason
-import Plutus.Model.Mock.Log
-import Plutus.Model.Mock.Address
-import Plutus.Model.Mock.Stat
-import Plutus.Model.Fork.Cardano.Class qualified as Class
-import Cardano.Ledger.Babbage.PParams
-import Plutus.Model.Fork.Cardano.Alonzo qualified as Alonzo
-import Plutus.Model.Fork.Cardano.Babbage qualified as Babbage
+import qualified Cardano.Ledger.Alonzo.Language       as Alonzo
+import qualified Cardano.Ledger.Alonzo.PParams        as Alonzo
+import           Cardano.Ledger.Alonzo.Scripts        (ExUnits (..))
+import qualified Cardano.Ledger.Alonzo.Scripts        as Alonzo
+import           Cardano.Ledger.Alonzo.Tools          (evaluateTransactionExecutionUnits)
+import           Cardano.Ledger.Babbage.PParams
+import qualified Cardano.Ledger.Mary.Value            as Mary
+import qualified Cardano.Ledger.SafeHash              as C
+import           Cardano.Ledger.Shelley.API.Wallet    (evaluateTransactionBalance)
+import qualified Cardano.Ledger.Shelley.API.Wallet    as C
+import qualified Cardano.Ledger.Shelley.UTxO          as Ledger
+import qualified Cardano.Ledger.TxIn                  as Ledger
+import           Plutus.Model.Ada                     (Ada (..))
+import           Plutus.Model.Fork.Cardano.Alonzo     ()
+import qualified Plutus.Model.Fork.Cardano.Alonzo     as Alonzo
+import           Plutus.Model.Fork.Cardano.Babbage    ()
+import qualified Plutus.Model.Fork.Cardano.Babbage    as Babbage
+import qualified Plutus.Model.Fork.Cardano.Class      as Class
+import           Plutus.Model.Fork.Cardano.Common     (fromCardanoValue,
+                                                       fromTxId)
+import           Plutus.Model.Mock.Address
+import           Plutus.Model.Mock.FailReason
+import           Plutus.Model.Mock.Log
+import           Plutus.Model.Mock.MockConfig
+import           Plutus.Model.Mock.Stat
 
 newtype User = User
   { userSignKey :: C.KeyPair 'C.Witness C.StandardCrypto
@@ -218,22 +222,22 @@ newtype User = User
  is estimated on Cardano version of TX.
 -}
 data Mock = Mock
-  { mockUsers        :: !(Map PubKeyHash User)
-  , mockAddresses    :: !(Map Address (Set TxOutRef))
-  , mockUtxos        :: !(Map TxOutRef TxOut)
-  , mockRefScripts   :: !(Map TxOutRef TxOut)
-  , mockDatums       :: !(Map DatumHash Datum)
-  , mockStake        :: !Stake
-  , mockTxs          :: !(Log TxStat)
-  , mockConfig       :: !MockConfig
-  , mockCurrentSlot  :: !Slot
-  , mockUserStep     :: !Integer
-  , mockFails        :: !(Log FailReason)
-  , mockInfo         :: !(Log String)
+  { mockUsers       :: !(Map PubKeyHash User)
+  , mockAddresses   :: !(Map Address (Set TxOutRef))
+  , mockUtxos       :: !(Map TxOutRef TxOut)
+  , mockRefScripts  :: !(Map TxOutRef TxOut)
+  , mockDatums      :: !(Map DatumHash Datum)
+  , mockStake       :: !Stake
+  , mockTxs         :: !(Log TxStat)
+  , mockConfig      :: !MockConfig
+  , mockCurrentSlot :: !Slot
+  , mockUserStep    :: !Integer
+  , mockFails       :: !(Log FailReason)
+  , mockInfo        :: !(Log String)
   , mustFailLog     :: !(Log MustFailLog)
   , -- | human readable names. Idea is to substitute for them
     -- in pretty printers for error logs, user names, script names.
-    mockNames :: !MockNames
+    mockNames       :: !MockNames
   }
 
 -- | Result of the execution.
@@ -244,7 +248,7 @@ data Result = Ok | Fail FailReason
 isOkResult :: Result -> Bool
 isOkResult = \case
   Ok -> True
-  _ -> False
+  _  -> False
 
 -- | State monad wrapper to run blockchain.
 newtype Run a = Run (State Mock a)
@@ -257,11 +261,11 @@ instance MonadFail Run where
 
 -- | Human readable names for pretty printing.
 data MockNames = MockNames
-  { mockNameUsers :: !(Map PubKeyHash String)
-  , mockNameAddresses :: !(Map Address String)
-  , mockNameAssetClasses :: !(Map AssetClass String)
+  { mockNameUsers           :: !(Map PubKeyHash String)
+  , mockNameAddresses       :: !(Map Address String)
+  , mockNameAssetClasses    :: !(Map AssetClass String)
   , mockNameCurrencySymbols :: !(Map CurrencySymbol String)
-  , mockNameTxns :: !(Map TxId String)
+  , mockNameTxns            :: !(Map TxId String)
   }
 
 -- | Modifies the mappings to human-readable names
@@ -551,7 +555,7 @@ checkSingleTx params (Tx extra tx) =
       let localScriptMap = P.txScripts tx
       case Class.toCardanoTx localScriptMap (mockConfigNetworkId cfg) params (Tx extra tx) of
         Right txBody -> cont txBody
-        Left err -> leftFail $ GenericFail err
+        Left err     -> leftFail $ GenericFail err
 
     withCheckStaking cont = withCheckWithdraw (withCheckCertificates cont )
 
@@ -589,8 +593,8 @@ checkSingleTx params (Tx extra tx) =
       mUtxo <- getUTxO tx
       case mUtxo of
         Just (Right utxo) -> cont utxo
-        Just (Left err) -> leftFail $ FailToCardano err
-        Nothing -> leftFail FailToReadUtxo
+        Just (Left err)   -> leftFail $ FailToCardano err
+        Nothing           -> leftFail FailToReadUtxo
 
     withCheckBalance utxo txBody cont
       | balance == mempty = cont
@@ -634,7 +638,7 @@ checkSingleTx params (Tx extra tx) =
                   cost = foldCost res'
               in case errs of
                     [] -> cont cost
-                    _ -> leftFail $ GenericFail $ unlines $ fmap show errs
+                    _  -> leftFail $ GenericFail $ unlines $ fmap show errs
 
         toAlonzoCostModels :: Alonzo.CostModels
                             -> Array.Array Alonzo.Language Alonzo.CostModel
