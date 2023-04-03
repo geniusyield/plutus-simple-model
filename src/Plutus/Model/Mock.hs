@@ -177,6 +177,7 @@ import           Cardano.Ledger.Hashes                as Ledger (EraIndependentT
 import qualified Cardano.Ledger.Hashes                as C
 import qualified Cardano.Ledger.SafeHash              as Ledger (unsafeMakeSafeHash)
 import           Cardano.Ledger.Slot                  (EpochSize (..))
+import           Plutus.Model.Fork.Ledger.Scripts     (Versioned (..))
 import           Plutus.Model.Fork.Ledger.Slot
 import           Plutus.Model.Fork.Ledger.TimeSlot    (SlotConfig (..))
 import           Plutus.Model.Fork.TxExtra
@@ -228,6 +229,7 @@ data Mock = Mock
   , mockUtxos       :: !(Map TxOutRef TxOut)
   , mockRefScripts  :: !(Map TxOutRef TxOut)
   , mockDatums      :: !(Map DatumHash Datum)
+  , mockScripts     :: !(Map ScriptHash (Versioned Script))
   , mockStake       :: !Stake
   , mockTxs         :: !(Log TxStat)
   , mockConfig      :: !MockConfig
@@ -366,6 +368,7 @@ initMock cfg initVal =
     { mockUsers = M.singleton genesisUserId genesisUser
     , mockUtxos = M.singleton genesisTxOutRef genesisTxOut
     , mockDatums = M.empty
+    , mockScripts = M.empty
     , mockRefScripts = M.empty
     , mockAddresses = M.singleton genesisAddress (S.singleton genesisTxOutRef)
     , mockStake = initStake
@@ -722,8 +725,11 @@ applyTx stat tid etx@(Tx extra P.Tx {..}) = do
   updateFees
   saveTx
   saveDatums
+  saveScripts
   where
     saveDatums = modify' $ \s -> s {mockDatums = txData <> mockDatums s}
+
+    saveScripts = modify' $ \s -> s {mockScripts = txScripts <> mockScripts s}
 
     saveTx = do
       t <- gets mockCurrentSlot
